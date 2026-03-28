@@ -1,5 +1,5 @@
 import { buildMockLocationRecords, MOCK_FEEDBACK, MOCK_LOCATIONS } from '../lib/mockData';
-import { hasSupabaseEnv, supabase } from '../lib/supabase';
+import { hasSupabaseEnv, supabase, supabaseConfigError } from '../lib/supabase';
 import type {
   ConfidenceRecord,
   FeedbackRecord,
@@ -115,6 +115,10 @@ function buildRecordList(locations: Location[], confidenceMap: Map<string, Confi
 }
 
 export async function getLocationResults(filters: Filters, showOutdated: boolean): Promise<LocationRecord[]> {
+  if (supabaseConfigError) {
+    throw new Error(supabaseConfigError);
+  }
+
   if (!hasSupabaseEnv || !supabase) {
     const mockRecords = buildMockLocationRecords(MOCK_LOCATIONS, readMockFeedback())
       .map((location) => ({ ...location, platform: normalizePlatform(location.platform) }))
@@ -177,6 +181,10 @@ export async function getLocationResults(filters: Filters, showOutdated: boolean
 }
 
 export async function submitFeedback(locationId: string, input: SubmitFeedbackInput): Promise<LocationRecord> {
+  if (supabaseConfigError) {
+    throw new Error(supabaseConfigError);
+  }
+
   const fingerprint = await createFingerprint();
 
   if (!hasSupabaseEnv || !supabase) {

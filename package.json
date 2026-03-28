@@ -6,12 +6,19 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "reddit:backfill": "node scripts/sync-reddit.mjs backfill",
+    "reddit:weekly": "node scripts/sync-reddit.mjs weekly",
+    "reddit:dry-run": "node scripts/sync-reddit.mjs weekly --dry-run",
+    "reddit:dry-run:comments": "node scripts/sync-reddit.mjs weekly --dry-run --with-comments",
+    "reddit:dry-run:no-ocr": "node scripts/sync-reddit.mjs weekly --dry-run --no-ocr"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "sharp": "^0.34.5",
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.2",
