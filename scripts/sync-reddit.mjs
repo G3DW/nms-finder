@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { recognizeGlyphStringFromImage } from './lib/glyph-recognizer.mjs';
 import { extractTextFromImage } from './lib/image-ocr.mjs';
 import { loadLocalEnv } from './lib/load-env.mjs';
 import { mapRedditPostToLocation } from './lib/reddit-parser.mjs';
@@ -190,9 +191,13 @@ async function insertOrUpdateLocation(location) {
 }
 
 function summarizePreparedLocations(postsWithContext) {
-  const prepared = postsWithContext.map(({ post, extraText, ocrText }) =>
-    mapRedditPostToLocation(post, `${extraText} ${ocrText ?? ''}`.trim()),
-  );
+  const prepared = postsWithContext.map(({ post, extraText, ocrText, recognizedGlyphs }) => {
+    const location = mapRedditPostToLocation(post, `${extraText} ${ocrText ?? ''}`.trim());
+    if (!location.portal_glyphs && recognizedGlyphs) {
+      location.portal_glyphs = recognizedGlyphs;
+    }
+    return location;
+  });
   let missingGlyphs = 0;
   let missingCoordinates = 0;
 
@@ -235,7 +240,7 @@ async function enrichPostsFromComments(posts, currentMode) {
 
 async function enrichPostsFromImages(postsWithContext) {
   if (skipOcr) {
-    return postsWithContext.map((entry) => ({ ...entry, ocrText: '' }));
+    return postsWithContext.map((entry) => ({ ...entry, ocrText: '', recognizedGlyphs: null }));
   }
 
   const enriched = [];
@@ -248,24 +253,25 @@ async function enrichPostsFromImages(postsWithContext) {
     );
 
     if (!needsOcr || !previewLocation.screenshot_url) {
-      enriched.push({ ...entry, ocrText: '' });
+      enriched.push({ ...entry, ocrText: '', recognizedGlyphs: null });
       continue;
     }
 
     if (ocrCount >= DEFAULT_OCR_MAX_POSTS) {
-      enriched.push({ ...entry, ocrText: '' });
+      enriched.push({ ...entry, ocrText: '', recognizedGlyphs: null });
       continue;
     }
 
     try {
+      const recognizedGlyphs = await recognizeGlyphStringFromImage(previewLocation.screenshot_url);
       const ocrText = await extractTextFromImage(previewLocation.screenshot_url);
       ocrCount += 1;
-      enriched.push({ ...entry, ocrText });
+      enriched.push({ ...entry, ocrText, recognizedGlyphs });
     } catch (error) {
       console.warn(
         `[reddit-sync] OCR skipped for ${entry.post.id}: ${error instanceof Error ? error.message : 'unknown error'}`,
       );
-      enriched.push({ ...entry, ocrText: '' });
+      enriched.push({ ...entry, ocrText: '', recognizedGlyphs: null });
     }
   }
 
